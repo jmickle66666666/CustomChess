@@ -1,0 +1,17 @@
+<html>
+<head>
+<link rel="stylesheet" href="css/chessboard-0.3.0.css" />
+</head>
+<body>
+<div id="board" style="width: 400px"></div>
+<script src="js/jquery.min.js"></script>
+<script src="js/chessboard-0.3.0.min.js"></script>
+<script src='customchess.js'></script>
+<script>
+var chess = new Chess();
+console.log(chess.fen());
+console.log(chess.moves());
+//board = ChessBoard('board',fen=chess.fen());
+</script>
+</body>
+</html>

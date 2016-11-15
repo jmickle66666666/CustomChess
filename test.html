@@ -1,0 +1,70 @@
+<html>
+<head>
+<link rel="stylesheet" href="css/chessboard-0.3.0.css" />
+</head>
+<body>
+<script src="js/jquery.min.js"></script>
+<script src="js/chessboard-0.3.0.min.js"></script>
+<script src='customchess.js'></script>
+<script>
+var failures = 0;
+function fail(message) { console.log("TEST FAILED! : "+message); failures += 1; }
+var chess = new Chess();
+
+
+// public API tests
+
+// chess.fen()
+
+// chess.reset()
+
+chess = new Chess();
+def = chess.fen();
+chess.load('2n2k1n/8/8/8/8/2N5/8/1N2K3 w - - 0 1')
+chess.reset();
+if (chess.fen() != def) fail('failed to reset() position');
+
+// chess.load()
+
+chess = new Chess();
+test_fen = '1n2k1n1/8/8/8/8/2N5/8/1N2K3 w - - 0 1';
+chess.load(test_fen);
+if (chess.fen() != test_fen) {
+    console.log(test_fen);
+    console.log(chess.fen());
+    fail('failed to load() test fen');
+}
+
+// chess.moves()
+
+chess = new Chess();
+chess.load('1n2k1n1/8/8/8/8/2N5/8/1N2K3 w - - 0 1');
+if ('b1c3' in chess.moves()) fail('blocked move is possible');
+
+// chess.turn()
+
+chess = new Chess();
+
+chess.load('1n2k1n1/8/8/8/8/2N5/8/1N2K3 w - - 0 1');
+if (chess.turn() != 'w') fail('incorrect turn() in test fen');
+
+chess.load('1n2k1n1/8/8/8/8/2N5/8/1N2K3 b - - 0 1');
+if (chess.turn() != 'b') {
+    console.log('1n2k1n1/8/8/8/8/2N5/8/1N2K3 b - - 0 1');
+    fail('incorrect turn() in test fen');
+}
+
+// chess.get()
+
+chess = new Chess();
+chess.load('1n2k1n1/8/8/8/8/2N5/8/1N2K3 w - - 0 1');
+if (chess.get('e1') != 'K') fail('incorrect get()');
+
+
+if (failures == 0) console.log("All tests pass!");
+
+
+else console.log(failures + " failed tests. Fix your shit.");
+</script>
+</body>
+</html>

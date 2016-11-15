@@ -6,7 +6,7 @@ var Chess = function(fen) {
     var EMPTY = '-';
 
     // state
-    var TURN = WHITE;
+    var turn = WHITE;
     var CASTLE_RIGHTS = '-';
     var EN_PASSANT = '-';
     var HALFMOVE_CLOCK = 0;
@@ -16,6 +16,11 @@ var Chess = function(fen) {
     var BOARD_WIDTH = 8;
 
     var PIECES = [];
+
+    function getColor(piece) {
+        if (piece == piece.toUpperCase()) return WHITE;
+        return BLACK;
+    }
 
     function getPieceBySymbol(symbol) {
         for (var i = 0; i < PIECES.length; i++) {
@@ -40,7 +45,7 @@ var Chess = function(fen) {
 
     function sanToBoardPos(san) {
         var coords = sanToCoords(san);
-        return ((rank-1) * 8) + (file-1);
+        return ((8 - coords.rank) * 8) + (coords.file-1);
     }
 
     function buildMoves(san,moves) {
@@ -50,23 +55,72 @@ var Chess = function(fen) {
                 var inMoves = buildLeap(san,moves[i][1]);
                 outMoves = outMoves.concat(inMoves);
             }
+
+            if (moves[i][0] == 'slide') {
+                var inMoves = buildSlide(san,moves[i][1]);
+                outMoves = outMoves.concat(inMoves);
+            }
         }
         return outMoves;
+    }
+
+    function checkMove(file,rank,san,move) {
+        if (file > 0 && rank > 0 && file <= 8 && rank <= 8) {
+            var move = coordsToSan(file,rank);
+            if (BOARD[sanToBoardPos(move)] != EMPTY) {
+                // Square is not empty, lets see if we can attack it
+                if (getColor(BOARD[sanToBoardPos(san)]) != getColor(BOARD[sanToBoardPos(move)])) {
+                    // Opponent piece, is it royal though? (You can't capture a king!)
+                    if (getPieceBySymbol(BOARD[sanToBoardPos(move)]).royal != true) {
+                        return san+'x'+move;
+                    }
+                }
+            } else {
+                return san+move;
+            }
+        }
+        return null;
     }
 
     function buildLeap(san,move) {
         var coords = sanToCoords(san);
         var output = [];
-        function checkAndAdd(file,rank) {
-            if (file > 0 && rank > 0 && file <=8 && rank <=8) {
-                var move = coordsToSan(file,rank);
-                output.push(san+move);
-            }
+        var m;
+        m = checkMove(coords.file + move[0], coords.rank + move[1],san,move); if (m) output.push(m);
+        m = checkMove(coords.file + move[0], coords.rank - move[1],san,move); if (m) output.push(m);
+        m = checkMove(coords.file - move[0], coords.rank + move[1],san,move); if (m) output.push(m);
+        m = checkMove(coords.file - move[0], coords.rank - move[1],san,move); if (m) output.push(m);
+        return output.reduce(function(a,b){if(a.indexOf(b)<0)a.push(b);return a;},[]);
+    }
+
+    function buildSlide(san,move) {
+        var coords = sanToCoords(san);
+        var output = [];
+        var m;
+        var nc = { file : coords.file, rank : coords.rank };
+        while (nc.file <= 8 && nc.file > 0 && nc.rank > 0 && nc.rank <= 8) {
+            nc.file += move[0];
+            nc.rank += move[1];
+            m = checkMove(nc.file, nc.rank,san,move); if (m) output.push(m);
         }
-        checkAndAdd(coords.file + move[0], coords.rank + move[1]);
-        checkAndAdd(coords.file + move[0], coords.rank - move[1]);
-        checkAndAdd(coords.file - move[0], coords.rank + move[1]);
-        checkAndAdd(coords.file - move[0], coords.rank - move[1]);
+        nc = { file : coords.file, rank : coords.rank };
+        while (nc.file <= 8 && nc.file > 0 && nc.rank > 0 && nc.rank <= 8) {
+            nc.file -= move[0];
+            nc.rank += move[1];
+            m = checkMove(nc.file, nc.rank,san,move); if (m) output.push(m);
+        }
+        nc = { file : coords.file, rank : coords.rank };
+        while (nc.file <= 8 && nc.file > 0 && nc.rank > 0 && nc.rank <= 8) {
+            nc.file += move[0];
+            nc.rank -= move[1];
+            m = checkMove(nc.file, nc.rank,san,move); if (m) output.push(m);
+        }
+        nc = { file : coords.file, rank : coords.rank };
+        while (nc.file <= 8 && nc.file > 0 && nc.rank > 0 && nc.rank <= 8) {
+            nc.file -= move[0];
+            nc.rank -= move[1];
+            m = checkMove(nc.file, nc.rank,san,move); if (m) output.push(m);
+        }
         return output.reduce(function(a,b){if(a.indexOf(b)<0)a.push(b);return a;},[]);
     }
 
@@ -102,14 +156,26 @@ var Chess = function(fen) {
     var KNIGHT = newPiece({
         moves : [
             ['leap',[1,2]],
-            ['leap',[2,1]],
+            ['leap',[2,1]]
         ],
         symbol : 'n'
     });
 
     PIECES.push(KNIGHT);
 
-    var DEFAULT_POSITION = '1n2k1n1/8/8/8/8/8/8/1N2K1N1 w - - 0 1';
+    var QUEEN = newPiece({
+        moves : [
+            ['slide',[1,1]],
+            ['slide',[1,0]]
+        ],
+        symbol : 'q'
+    });
+
+    PIECES.push(QUEEN);
+
+    // other stuff
+
+    var DEFAULT_POSITION = '3qk3/8/8/8/3Q4/8/8/4K3 w - - 0 1';
 
     if (!fen) {
         fen = DEFAULT_POSITION;
@@ -132,6 +198,7 @@ var Chess = function(fen) {
                 boardPosition += parseInt(fenDefinition.charAt(fenPosition));
             }
         }
+        turn = fen.split(' ')[1];
     }
 
     function saveFEN() {
@@ -148,14 +215,14 @@ var Chess = function(fen) {
                 fenPosition += BOARD[i];
             }
             if (i % BOARD_WIDTH == 7 && i < BOARD.length -1) {
-                fenPosition += spaceCounter;
+                if (spaceCounter != 0) fenPosition += spaceCounter;
                 fenPosition += "/";
                 spaceCounter = 0;
             }
         }
         if (spaceCounter > 0) fenPosition += spaceCounter;
         
-        output = [fenPosition,TURN,CASTLE_RIGHTS,EN_PASSANT,HALFMOVE_CLOCK,FULLMOVE_CLOCK].join(' ');
+        output = [fenPosition,turn,CASTLE_RIGHTS,EN_PASSANT,HALFMOVE_CLOCK,FULLMOVE_CLOCK].join(' ');
 
         return output;
     }
@@ -164,8 +231,8 @@ var Chess = function(fen) {
         var output = [];
         for (var i = 0; i < BOARD.length; i++) {
             if (BOARD[i] != EMPTY) {
-                if ((TURN == WHITE && BOARD[i] == BOARD[i].toUpperCase()) ||
-                    (TURN == BLACK && BOARD[i] == BOARD[i].toLowerCase()))
+                if ((turn == WHITE && BOARD[i] == BOARD[i].toUpperCase()) ||
+                    (turn == BLACK && BOARD[i] == BOARD[i].toLowerCase()))
                         output = output.concat(getPieceBySymbol(BOARD[i]).legalMoves(boardPosToSan(i)));
             }
         }
@@ -180,8 +247,28 @@ var Chess = function(fen) {
             return saveFEN();
         },
 
+        reset : function() {
+            loadFEN(DEFAULT_POSITION);
+        },
+
+        load : function(fen) {
+            loadFEN(fen);
+        },
+
         moves : function () {
             return legalMoves();
+        },
+
+        setTurn : function(side) {
+            turn = side;
+        },
+
+        turn : function() {
+            return turn;
+        },
+
+        get : function(square) {
+            return BOARD[sanToBoardPos(square)];
         }
     }
 

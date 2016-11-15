@@ -17,6 +17,14 @@ var Chess = function(fen) {
 
     var PIECES = [];
 
+    var IN_CHECK = false;
+
+    function inCheck() {
+        IN_CHECK = false;
+        legalMoves();
+        return IN_CHECK;
+    }
+
     function sanMoveToObject(sanMove) {
         // I really want to replace all the san/coords bullshit with move objects internally. TODO
         // this is just the beginning.....
@@ -132,6 +140,8 @@ var Chess = function(fen) {
                     // Opponent piece, is it royal though? (You can't capture a king!)
                     if (getPieceBySymbol(BOARD[sanToBoardPos(move)]).royal != true) {
                         return san+'x'+move;
+                    } else {
+                        IN_CHECK = true;
                     }
                 }
             } else {

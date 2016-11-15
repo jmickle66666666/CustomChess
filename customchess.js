@@ -471,6 +471,9 @@ var Chess = function(fen) {
             }
         }
         turn = fen.split(' ')[1];
+        //CASTLE_RIGHTS = 
+        //HALFMOVE_CLOCK = fen.split(' ')[2];
+        //HALFMOVE_CLOCK = fen.split(' ')[3];
     }
 
     function saveFEN() {
@@ -549,6 +552,12 @@ var Chess = function(fen) {
             BOARD[sanToBoardPos(move.from)] = EMPTY;
 
             if (turn == WHITE) turn = BLACK; else turn = WHITE;
+
+            HALFMOVE_CLOCK += 1;
+            if (HALFMOVE_CLOCK == 2) {
+                HALFMOVE_CLOCK = 0;
+                FULLMOVE_CLOCK += 1;
+            }
         } else return null;
     }
 
@@ -596,8 +605,17 @@ var Chess = function(fen) {
             return inCheck() && legalMoves() == 0;
         },
 
-        // not implemented
-        game_over: function() { return false; }
+        in_stalemate : function() {
+            return !inCheck() && legalMoves() == 0;
+        },
+
+        in_draw : function() {
+            return !inCheck() && legalMoves() == 0;
+        },
+
+        game_over: function() { 
+            return this.in_draw() || this.in_checkmate();
+        }
     }
 
 }

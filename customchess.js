@@ -17,6 +17,36 @@ var Chess = function(fen) {
 
     var PIECES = [];
 
+    function sanMoveToObject(sanMove) {
+        // I really want to replace all the san/coords bullshit with move objects internally. TODO
+        // this is just the beginning.....
+        var output = {
+            from : '',
+            to : '',
+            promotion : '',
+            capture : false
+        };
+
+        output.from = sanMove.substring(0,2);
+        if (sanMove.charAt(2) == 'x') {
+            output.capture = true;
+            output.to = sanMove.substring(3,5);
+        }
+        else output.to = sanMove.substring(2,4);
+        if (sanMove.indexOf('=') > -1) {
+            output.promotion = sanMove.charAt(sanMove.indexOf('=')+1);
+        }
+        return output;
+    }
+
+    function moveObjectToSan(moveObject) {
+        return output.from + output.capture?'x':'' + output.to + output.promotion!=''?'='+output.promotion:'';
+    }
+
+    function validateMove(moveObject) {
+        return legalMoves().indexOf(moveObjectToSan(moveObject)) > -1;
+    }
+
     function getColor(piece) {
         if (piece == piece.toUpperCase()) return WHITE;
         return BLACK;
@@ -283,7 +313,7 @@ var Chess = function(fen) {
 
     // other stuff
 
-    var DEFAULT_POSITION = '1nbqkbnr/Pppppppp/8/8/8/8/1PPPPPPP/RNBQKBNR w - - 0 1';
+    var DEFAULT_POSITION = '1nbqkbnr/Pppppppp/8/8/8/8/1PP1PPPP/RNBQKBNR w - - 0 1';
 
     if (!fen) {
         fen = DEFAULT_POSITION;
@@ -347,6 +377,20 @@ var Chess = function(fen) {
         return output;
     }
 
+    function executeMove(move) {
+        if (validateMove(move)) {
+            var fromPiece = BOARD[sanToBoardPos(move.from)];
+            
+            if (move.promotion != '') {
+                BOARD[sanToBoardPos(move.to)] = move.promotion;
+            } else {
+                BOARD[sanToBoardPos(move.to)] = fromPiece;  
+            }
+
+            BOARD[sanToBoardPos(move.from)] = EMPTY;
+        } else return null;
+    }
+
     loadFEN(fen);
 
     // PUBLIC API
@@ -377,7 +421,14 @@ var Chess = function(fen) {
 
         get : function(square) {
             return BOARD[sanToBoardPos(square)];
-        }
+        },
+
+        move : function(move) {
+            return executeMove(move);
+        },
+
+        // not implemented
+        game_over: function() { return false; }
     }
 
 }

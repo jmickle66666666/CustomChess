@@ -40,7 +40,23 @@ var Chess = function(fen) {
     }
 
     function moveObjectToSan(moveObject) {
-        return output.from + output.capture?'x':'' + output.to + output.promotion!=''?'='+output.promotion:'';
+        var output = '';
+        var piece = BOARD[sanToBoardPos(moveObject.from)];
+        var color = getColor(piece);
+        output += moveObject.from;
+        // check it is actually capturing
+        if (!isEmpty(moveObject.to)) moveObject.capture = true;
+        if (moveObject.capture) {
+            output += 'x';
+        }
+        output += moveObject.to;
+        // same, gotta check if it really is promoting.
+        if (moveObject.promotion != '') {
+            if ((piece == 'p' && moveObject.to[1] == 1) || (piece == 'P' && moveObject.to[1] == 8))
+                output += '=' + moveObject.promotion;
+        }
+
+        return output;
     }
 
     function validateMove(moveObject) {
@@ -48,6 +64,7 @@ var Chess = function(fen) {
     }
 
     function getColor(piece) {
+        if (piece == EMPTY) return null;
         if (piece == piece.toUpperCase()) return WHITE;
         return BLACK;
     }
@@ -274,32 +291,42 @@ var Chess = function(fen) {
                 if (color == 'b') upMove.rank -= 1;
                 if (isEmpty(coordsToSan(upMove.file,upMove.rank))) output.push(san + coordsToSan(upMove.file,upMove.rank));
             }
-
+            var _tof,_tor,to_san;
             // attacking
-            if (!isEmpty(coordsToSan(coords.file + 1,coords.rank + (color=='w'?1:-1)))) {
-                if (color != getColor(coordsToSan(coords.file + 1, coords.rank + (color=='w'?1:-1)))) {
-                    var out = san + 'x' + coordsToSan(coords.file + 1, coords.rank + (color=='w'?1:-1));
-                    if (!promotionRank) {
-                        output.push(out);
-                    } else {
-                        output.push(out + '=Q');
-                        output.push(out + '=R');
-                        output.push(out + '=N');
-                        output.push(out + '=B');
+            if (coords.file <= 7) {
+                _tof = coords.file + 1;
+                _tor = coords.rank + (color=='w'?1:-1);
+                to_san = coordsToSan(_tof,_tof);
+                if (!isEmpty(to_san)) {
+                    if (color != getColorAt(to_san)) {
+                        var out = san + 'x' + to_san;
+                        if (!promotionRank) {
+                            output.push(out);
+                        } else {
+                            output.push(out + '=Q');
+                            output.push(out + '=R');
+                            output.push(out + '=N');
+                            output.push(out + '=B');
+                        }
                     }
                 }
             }
 
-            if (!isEmpty(coordsToSan(coords.file - 1,coords.rank + (color=='w'?1:-1)))) {
-                if (color != getColor(coordsToSan(coords.file - 1, coords.rank + (color=='w'?1:-1)))) {
-                    var out = san + 'x' + coordsToSan(coords.file - 1, coords.rank + (color=='w'?1:-1));
-                    if (!promotionRank) {
-                        output.push(out);
-                    } else {
-                        output.push(out + '=Q');
-                        output.push(out + '=R');
-                        output.push(out + '=N');
-                        output.push(out + '=B');
+            if (coords.file >= 2) {
+                _tof = coords.file - 1;
+                _tor = coords.rank + (color=='w'?1:-1);
+                to_san = coordsToSan(_tof,_tor);
+                if (!isEmpty(to_san)) {
+                    if (color != getColorAt(to_san)) {
+                        var out = san + 'x' + to_san;
+                        if (!promotionRank) {
+                            output.push(out);
+                        } else {
+                            output.push(out + '=Q');
+                            output.push(out + '=R');
+                            output.push(out + '=N');
+                            output.push(out + '=B');
+                        }
                     }
                 }
             }
@@ -313,7 +340,7 @@ var Chess = function(fen) {
 
     // other stuff
 
-    var DEFAULT_POSITION = '1nbqkbnr/Pppppppp/8/8/8/8/1PP1PPPP/RNBQKBNR w - - 0 1';
+    var DEFAULT_POSITION = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
     if (!fen) {
         fen = DEFAULT_POSITION;
@@ -378,7 +405,10 @@ var Chess = function(fen) {
     }
 
     function executeMove(move) {
+        
         if (validateMove(move)) {
+            // please ignore this
+            move = sanMoveToObject(moveObjectToSan(move));
             var fromPiece = BOARD[sanToBoardPos(move.from)];
             
             if (move.promotion != '') {
@@ -388,6 +418,8 @@ var Chess = function(fen) {
             }
 
             BOARD[sanToBoardPos(move.from)] = EMPTY;
+
+            if (turn == WHITE) turn = BLACK; else turn = WHITE;
         } else return null;
     }
 

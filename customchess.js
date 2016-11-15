@@ -13,6 +13,7 @@ var Chess = function(fen) {
     var FULLMOVE_CLOCK = 1;
 
     var BOARD = new Array(64);
+    var BOARD_WIDTH = 8;
 
     var PIECES = [];
 
@@ -34,7 +35,7 @@ var Chess = function(fen) {
     }
 
     function boardPosToSan(position) {
-        return coordsToSan(1 + position % 8, 1 + Math.floor(position / 8));
+        return coordsToSan(1 + position % 8, 8 - Math.floor(position / 8));
     }
 
     function sanToBoardPos(san) {
@@ -96,7 +97,7 @@ var Chess = function(fen) {
 
     PIECES.push(KING);
 
-    var DEFAULT_POSITION = '4K3/8/8/8/8/8/8/4k3 w - - 0 1';
+    var DEFAULT_POSITION = '4k3/8/8/8/8/8/8/4K3 w - - 0 1';
 
     if (!fen) {
         fen = DEFAULT_POSITION;
@@ -133,6 +134,11 @@ var Chess = function(fen) {
                     spaceCounter = 0;
                 }
                 fenPosition += BOARD[i];
+            }
+            if (i % BOARD_WIDTH == 7 && i < BOARD.length -1) {
+                fenPosition += spaceCounter;
+                fenPosition += "/";
+                spaceCounter = 0;
             }
         }
         if (spaceCounter > 0) fenPosition += spaceCounter;

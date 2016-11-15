@@ -22,6 +22,14 @@ var Chess = function(fen) {
         return BLACK;
     }
 
+    function getColorAt(san) {
+        return getColor(BOARD[sanToBoardPos(san)]);
+    }
+
+    function isEmpty(san) {
+        return BOARD[sanToBoardPos(san)] == EMPTY;
+    }
+
     function getPieceBySymbol(symbol) {
         for (var i = 0; i < PIECES.length; i++) {
             if (PIECES[i].symbol == symbol.toLowerCase()) return PIECES[i];
@@ -45,6 +53,10 @@ var Chess = function(fen) {
 
     function sanToBoardPos(san) {
         var coords = sanToCoords(san);
+        return ((8 - coords.rank) * 8) + (coords.file-1);
+    }
+
+    function coordsToBoardPos(coords) {
         return ((8 - coords.rank) * 8) + (coords.file-1);
     }
 
@@ -97,30 +109,24 @@ var Chess = function(fen) {
         var coords = sanToCoords(san);
         var output = [];
         var m;
-        var nc = { file : coords.file, rank : coords.rank };
-        while (nc.file <= 8 && nc.file > 0 && nc.rank > 0 && nc.rank <= 8) {
-            nc.file += move[0];
-            nc.rank += move[1];
-            m = checkMove(nc.file, nc.rank,san,move); if (m) output.push(m);
+        function pushSlide(x,y) {
+            var nc = { file : coords.file, rank : coords.rank };
+            while (nc.file <= 8 && nc.file > 0 && nc.rank > 0 && nc.rank <= 8) {
+                nc.file += x;
+                nc.rank += y;
+                if (!(nc.file <= 8 && nc.file > 0 && nc.rank > 0 && nc.rank <= 8)) break;
+                sq = BOARD[coordsToBoardPos(nc)];
+                if (sq != EMPTY && getColor(sq) == getColor(BOARD[sanToBoardPos(san)])) {
+                    // blocked, stop.
+                    break;
+                }
+                m = checkMove(nc.file, nc.rank,san,move); if (m) output.push(m);
+            }
         }
-        nc = { file : coords.file, rank : coords.rank };
-        while (nc.file <= 8 && nc.file > 0 && nc.rank > 0 && nc.rank <= 8) {
-            nc.file -= move[0];
-            nc.rank += move[1];
-            m = checkMove(nc.file, nc.rank,san,move); if (m) output.push(m);
-        }
-        nc = { file : coords.file, rank : coords.rank };
-        while (nc.file <= 8 && nc.file > 0 && nc.rank > 0 && nc.rank <= 8) {
-            nc.file += move[0];
-            nc.rank -= move[1];
-            m = checkMove(nc.file, nc.rank,san,move); if (m) output.push(m);
-        }
-        nc = { file : coords.file, rank : coords.rank };
-        while (nc.file <= 8 && nc.file > 0 && nc.rank > 0 && nc.rank <= 8) {
-            nc.file -= move[0];
-            nc.rank -= move[1];
-            m = checkMove(nc.file, nc.rank,san,move); if (m) output.push(m);
-        }
+        pushSlide(move[0],move[1]);
+        pushSlide(-move[0],move[1]);
+        pushSlide(move[0],-move[1]);
+        pushSlide(-move[0],-move[1]);
         return output.reduce(function(a,b){if(a.indexOf(b)<0)a.push(b);return a;},[]);
     }
 
@@ -166,16 +172,118 @@ var Chess = function(fen) {
     var QUEEN = newPiece({
         moves : [
             ['slide',[1,1]],
-            ['slide',[1,0]]
+            ['slide',[1,0]],
+            ['slide',[0,1]]
         ],
         symbol : 'q'
     });
 
     PIECES.push(QUEEN);
 
+    var BISHOP = newPiece({
+        moves : [
+            ['slide',[1,1]]
+        ],
+        symbol : 'b'
+    });
+
+    PIECES.push(BISHOP);
+
+    var ROOK = newPiece({
+        moves : [
+            ['slide',[0,1]],
+            ['slide',[1,0]]
+        ],
+        symbol : 'r'
+    });
+
+    PIECES.push(ROOK);
+
+    // The pawn requires bespoke behaviour for moving.
+
+    var PAWN = newPiece({
+        legalMoves : function(san) {
+            
+            var output = [];
+            var color = getColorAt(san);
+            var coords = sanToCoords(san);
+
+            // if we somehow have a pawn at the edge, exit early.
+            if (color == 'b' && coords.rank == 1) return [];
+            if (color == 'w' && coords.rank == 8) return [];
+
+            // promotion & double move check
+            var promotionRank = false;
+            var doubleMove = false;
+            if (color == 'b') {
+                if (coords.rank == 2) promotionRank = true;
+                if (coords.rank == 7) doubleMove = true;
+            }
+            if (color == 'w') {
+                if (coords.rank == 7) promotionRank = true;
+                if (coords.rank == 2) doubleMove = true;
+            }
+
+            // movement
+            var upMove = sanToCoords(san);
+            if (color == 'w') upMove.rank += 1;
+            if (color == 'b') upMove.rank -= 1;
+            if (isEmpty(coordsToSan(upMove.file,upMove.rank))) {
+                var out = san + coordsToSan(upMove.file,upMove.rank);
+                if (!promotionRank) {
+                    output.push(out);
+                } else {
+                    output.push(out + '=Q');
+                    output.push(out + '=R');
+                    output.push(out + '=N');
+                    output.push(out + '=B');
+                }
+            }
+            if (doubleMove) {
+                if (color == 'w') upMove.rank += 1;
+                if (color == 'b') upMove.rank -= 1;
+                if (isEmpty(coordsToSan(upMove.file,upMove.rank))) output.push(san + coordsToSan(upMove.file,upMove.rank));
+            }
+
+            // attacking
+            if (!isEmpty(coordsToSan(coords.file + 1,coords.rank + (color=='w'?1:-1)))) {
+                if (color != getColor(coordsToSan(coords.file + 1, coords.rank + (color=='w'?1:-1)))) {
+                    var out = san + 'x' + coordsToSan(coords.file + 1, coords.rank + (color=='w'?1:-1));
+                    if (!promotionRank) {
+                        output.push(out);
+                    } else {
+                        output.push(out + '=Q');
+                        output.push(out + '=R');
+                        output.push(out + '=N');
+                        output.push(out + '=B');
+                    }
+                }
+            }
+
+            if (!isEmpty(coordsToSan(coords.file - 1,coords.rank + (color=='w'?1:-1)))) {
+                if (color != getColor(coordsToSan(coords.file - 1, coords.rank + (color=='w'?1:-1)))) {
+                    var out = san + 'x' + coordsToSan(coords.file - 1, coords.rank + (color=='w'?1:-1));
+                    if (!promotionRank) {
+                        output.push(out);
+                    } else {
+                        output.push(out + '=Q');
+                        output.push(out + '=R');
+                        output.push(out + '=N');
+                        output.push(out + '=B');
+                    }
+                }
+            }
+
+            return output;
+        },
+        symbol : 'p'
+    });
+
+    PIECES.push(PAWN);
+
     // other stuff
 
-    var DEFAULT_POSITION = '3qk3/8/8/8/3Q4/8/8/4K3 w - - 0 1';
+    var DEFAULT_POSITION = '1nbqkbnr/Pppppppp/8/8/8/8/1PPPPPPP/RNBQKBNR w - - 0 1';
 
     if (!fen) {
         fen = DEFAULT_POSITION;

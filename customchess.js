@@ -85,6 +85,8 @@ var Chess = function(fen) {
         return options;
     }
 
+    // Default piece definitions
+
     var KING = newPiece({
         moves : [
             ['leap',[1,0]],
@@ -97,7 +99,17 @@ var Chess = function(fen) {
 
     PIECES.push(KING);
 
-    var DEFAULT_POSITION = '4k3/8/8/8/8/8/8/4K3 w - - 0 1';
+    var KNIGHT = newPiece({
+        moves : [
+            ['leap',[1,2]],
+            ['leap',[2,1]],
+        ],
+        symbol : 'n'
+    });
+
+    PIECES.push(KNIGHT);
+
+    var DEFAULT_POSITION = '1n2k1n1/8/8/8/8/8/8/1N2K1N1 w - - 0 1';
 
     if (!fen) {
         fen = DEFAULT_POSITION;

@@ -17,12 +17,21 @@ var Chess = function(fen) {
 
     var PIECES = [];
 
-    var IN_CHECK = false;
-
     function inCheck() {
-        IN_CHECK = false;
-        legalMoves();
-        return IN_CHECK;
+        for (var i = 0; i < BOARD.length; i++) {
+            if (BOARD[i] != EMPTY) {
+                if (getPieceBySymbol(BOARD[i]).royal == true && getColor(BOARD[i]) == turn) {
+                    for (var j = 0; j < BOARD.length; j++) {
+                        if (BOARD[j] != EMPTY) {
+                            if (getColor(BOARD[j]) != turn) {
+                                if (getPieceBySymbol(BOARD[j]).attacking(boardPosToSan(j),boardPosToSan(i))) return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     function sanMoveToObject(sanMove) {
@@ -140,8 +149,6 @@ var Chess = function(fen) {
                     // Opponent piece, is it royal though? (You can't capture a king!)
                     if (getPieceBySymbol(BOARD[sanToBoardPos(move)]).royal != true) {
                         return san+'x'+move;
-                    } else {
-                        IN_CHECK = true;
                     }
                 }
             } else {
@@ -187,6 +194,70 @@ var Chess = function(fen) {
         return output.reduce(function(a,b){if(a.indexOf(b)<0)a.push(b);return a;},[]);
     }
 
+    function attacking(from, to, moves) {
+        var coords = sanToCoords(from);
+        for (var i = 0; i < moves.length; i++) {
+            if (moves[i][0] == 'leap') {
+                if (coordsToSan(coords.file + moves[i][1][0], coords.rank + moves[i][1][1]) == to) return true;
+                if (coordsToSan(coords.file - moves[i][1][0], coords.rank + moves[i][1][1]) == to) return true;
+                if (coordsToSan(coords.file + moves[i][1][0], coords.rank - moves[i][1][1]) == to) return true;
+                if (coordsToSan(coords.file - moves[i][1][0], coords.rank - moves[i][1][1]) == to) return true;
+            }
+            if (moves[i][0] == 'slide') {
+                var x,y;
+                x = coords.file; y = coords.rank;
+                while (x <= 8 && y <= 8) {
+                    x += moves[i][1][0];
+                    y += moves[i][1][1];
+                    if (!(x <= 8 && y <= 8)) break;
+                    sq = BOARD[coordsToBoardPos({file:x,rank:y})];
+                    if (sq != EMPTY && sq != BOARD[sanToBoardPos(to)]) {
+                        // blocked, stop.
+                        break;
+                    }
+                    if (coordsToSan(x,y) == to) return true;
+                }
+                x = coords.file; y = coords.rank;
+                while (x >= 1 && y <= 8) {
+                    x -= moves[i][1][0];
+                    y += moves[i][1][1];
+                    if (!(x >= 1 && y <= 8)) break;
+                    sq = BOARD[coordsToBoardPos({file:x,rank:y})];
+                    if (sq != EMPTY && sq != BOARD[sanToBoardPos(to)]) {
+                        // blocked, stop.
+                        break;
+                    }
+                    if (coordsToSan(x,y) == to) return true;
+                }
+                x = coords.file; y = coords.rank;
+                while (x <= 8 && y >= 1) {
+                    x += moves[i][1][0];
+                    y -= moves[i][1][1];
+                    if (!(x <= 8 && y >= 1)) break;
+                    sq = BOARD[coordsToBoardPos({file:x,rank:y})];
+                    if (sq != EMPTY && sq != BOARD[sanToBoardPos(to)]) {
+                        // blocked, stop.
+                        break;
+                    }
+                    if (coordsToSan(x,y) == to) return true;
+                }
+                x = coords.file; y = coords.rank;
+                while (x >= 1 && y >= 1) {
+                    x -= moves[i][1][0];
+                    y -= moves[i][1][1];
+                    if (!(x >= 1 && y >= 1)) break;
+                    sq = BOARD[coordsToBoardPos({file:x,rank:y})];
+                    if (sq != EMPTY && sq != BOARD[sanToBoardPos(to)]) {
+                        // blocked, stop.
+                        break;
+                    }
+                    if (coordsToSan(x,y) == to) return true;
+                }
+            }
+        }
+        return false;
+    }
+
     function newPiece(options) {
         var defaultArgs = {
             'moves' : [],
@@ -194,6 +265,9 @@ var Chess = function(fen) {
             'symbol' : 'x',
             'legalMoves' : function (san) {
                 return buildMoves(san,this.moves);
+            },
+            'attacking' : function (from,to) {
+                return attacking(from, to, this.moves);
             }
         }
         for(var index in defaultArgs) {
@@ -319,7 +393,7 @@ var Chess = function(fen) {
                 _tor = coords.rank + (color=='w'?1:-1);
                 to_san = coordsToSan(_tof,_tor);
                 if (!isEmpty(to_san)) {
-                    if (color != getColorAt(to_san)) {
+                    if (color != getColorAt(to_san) && getPieceBySymbol(BOARD[sanToBoardPos(to_san)]).royal != true) {
                         var out = san + 'x' + to_san;
                         if (!promotionRank) {
                             output.push(out);
@@ -338,7 +412,7 @@ var Chess = function(fen) {
                 _tor = coords.rank + (color=='w'?1:-1);
                 to_san = coordsToSan(_tof,_tor);
                 if (!isEmpty(to_san)) {
-                    if (color != getColorAt(to_san)) {
+                    if (color != getColorAt(to_san) && getPieceBySymbol(BOARD[sanToBoardPos(to_san)]).royal != true) {
                         var out = san + 'x' + to_san;
                         if (!promotionRank) {
                             output.push(out);
@@ -353,6 +427,18 @@ var Chess = function(fen) {
             }
 
             return output;
+        },
+        attacking : function (from, to) {
+            var color = getColorAt(from);
+            var coords = sanToCoords(from);
+
+            // if we somehow have a pawn at the edge, exit early.
+            if (color == 'b' && coords.rank == 1) return false;
+            if (color == 'w' && coords.rank == 8) return false;
+
+            if (coordsToSan(coords.file + 1, coords.rank + (color=='w'?1:-1)) == to) return true;
+            if (coordsToSan(coords.file - 1, coords.rank + (color=='w'?1:-1)) == to) return true;
+            return false;
         },
         symbol : 'p'
     });
@@ -415,14 +501,35 @@ var Chess = function(fen) {
 
     function legalMoves() {
         var output = [];
+        var outmoves = [];
         for (var i = 0; i < BOARD.length; i++) {
             if (BOARD[i] != EMPTY) {
                 if ((turn == WHITE && BOARD[i] == BOARD[i].toUpperCase()) ||
                     (turn == BLACK && BOARD[i] == BOARD[i].toLowerCase()))
-                        output = output.concat(getPieceBySymbol(BOARD[i]).legalMoves(boardPosToSan(i)));
+                        outmoves = outmoves.concat(getPieceBySymbol(BOARD[i]).legalMoves(boardPosToSan(i)));
             }
         }
+        // verify moves avoid check:
+        currentFen = saveFEN();
+        for (i = 0; i < outmoves.length; i++) {
+            testMove(outmoves[i]);
+            if (!inCheck()) output.push(outmoves[i]);
+            loadFEN(currentFen);
+        }
+
         return output;
+    }
+
+    function testMove(move) {
+        move = sanMoveToObject(move);
+        var fromPiece = BOARD[sanToBoardPos(move.from)];
+        if (move.promotion != '') {
+            if (turn == WHITE) move.promotion = move.promotion.toUpperCase();
+            BOARD[sanToBoardPos(move.to)] = move.promotion;
+        } else {
+            BOARD[sanToBoardPos(move.to)] = fromPiece;  
+        }
+        BOARD[sanToBoardPos(move.from)] = EMPTY;
     }
 
     function executeMove(move) {
@@ -479,6 +586,14 @@ var Chess = function(fen) {
 
         move : function(move) {
             return executeMove(move);
+        },
+
+        in_check : function() {
+            return inCheck();
+        },
+
+        in_checkmate : function() {
+            return inCheck() && legalMoves() == 0;
         },
 
         // not implemented

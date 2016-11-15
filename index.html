@@ -5,7 +5,7 @@
 <body>
 <div id="board" style="width: 400px"></div>
 <script src="js/jquery.min.js"></script>
-<script src="js/chessboard-0.3.0.min.js"></script>
+<script src="js/chessboard-0.3.0.js"></script>
 <script src='customchess.js'></script>
 <script>
 var board,
@@ -26,11 +26,14 @@ var onDrop = function(source, target) {
   var move = game.move({
     from: source,
     to: target,
-    promotion: 'q' // NOTE: always promote to a queen for example simplicity
+    promotion: 'o' // NOTE: always promote to a queen for example simplicity
   });
 
   // illegal move
-  if (move === null) return 'snapback';
+  if (move === null) {
+    console.log('invalid move :(');
+    return 'snapback';
+  }
 
 };
 
@@ -48,6 +51,7 @@ var cfg = {
   onSnapEnd: onSnapEnd
 };
 board = ChessBoard('board', cfg);
+board.position(game.fen());
 </script>
 </body>
 </html>

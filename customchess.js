@@ -246,6 +246,17 @@ var Chess = function(fen) {
 
     PIECES.push(ROOK);
 
+    var SPAREQUEEN = newPiece({
+        moves : [
+            ['slide',[1,1]],
+            ['slide',[1,0]],
+            ['slide',[0,1]]
+        ],
+        symbol : 'o'
+    });
+
+    PIECES.push(SPAREQUEEN);
+
     // The pawn requires bespoke behaviour for moving.
 
     var PAWN = newPiece({
@@ -280,10 +291,10 @@ var Chess = function(fen) {
                 if (!promotionRank) {
                     output.push(out);
                 } else {
-                    output.push(out + '=Q');
-                    output.push(out + '=R');
-                    output.push(out + '=N');
-                    output.push(out + '=B');
+                    for (var i = 0; i < PIECES.length; i++) {
+                        var prom = PIECES[i].symbol;
+                        output.push(out + '=' + prom);
+                    }
                 }
             }
             if (doubleMove) {
@@ -296,17 +307,17 @@ var Chess = function(fen) {
             if (coords.file <= 7) {
                 _tof = coords.file + 1;
                 _tor = coords.rank + (color=='w'?1:-1);
-                to_san = coordsToSan(_tof,_tof);
+                to_san = coordsToSan(_tof,_tor);
                 if (!isEmpty(to_san)) {
                     if (color != getColorAt(to_san)) {
                         var out = san + 'x' + to_san;
                         if (!promotionRank) {
                             output.push(out);
                         } else {
-                            output.push(out + '=Q');
-                            output.push(out + '=R');
-                            output.push(out + '=N');
-                            output.push(out + '=B');
+                            for (var i = 0; i < PIECES.length; i++) {
+                                var prom = PIECES[i].symbol;
+                                output.push(out + '=' + prom);
+                            }
                         }
                     }
                 }
@@ -322,10 +333,10 @@ var Chess = function(fen) {
                         if (!promotionRank) {
                             output.push(out);
                         } else {
-                            output.push(out + '=Q');
-                            output.push(out + '=R');
-                            output.push(out + '=N');
-                            output.push(out + '=B');
+                            for (var i = 0; i < PIECES.length; i++) {
+                                var prom = PIECES[i].symbol;
+                                output.push(out + '=' + prom);
+                            }
                         }
                     }
                 }
@@ -405,13 +416,14 @@ var Chess = function(fen) {
     }
 
     function executeMove(move) {
-        
+
         if (validateMove(move)) {
             // please ignore this
             move = sanMoveToObject(moveObjectToSan(move));
             var fromPiece = BOARD[sanToBoardPos(move.from)];
             
             if (move.promotion != '') {
+                if (turn == WHITE) move.promotion = move.promotion.toUpperCase();
                 BOARD[sanToBoardPos(move.to)] = move.promotion;
             } else {
                 BOARD[sanToBoardPos(move.to)] = fromPiece;  

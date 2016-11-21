@@ -44,22 +44,16 @@ var Chess = function(fen) {
 
     // Checks if the current player is currently in check
     function inCheck() {
-                                for (var i = 0; i < BOARD.length; i++) {
-                            if (BOARD[i] != EMPTY) {
-                        // Iterate all royal pieces for the current player
-                        if (getPieceBySymbol(BOARD[i]).royal == true && getColor(BOARD[i]) == turn) {
-                    for (var j = 0; j < BOARD.length; j++) {
-                if (BOARD[j] != EMPTY) {
-            // Iterate each piece for the opponent, and see if it attacking the royal piece
-            if (getColor(BOARD[j]) != turn) {
-        if (getPieceBySymbol(BOARD[j]).attacking(boardPosToSan(j),boardPosToSan(i))) return true;
-            }
-                }
-                    }
-                        }
-                            }
-                                }
-        return false;
+        for (var i = 0; i < BOARD.length; i++) {
+            if (BOARD[i] != EMPTY) {
+                // Iterate all royal pieces for the current player
+                    if (getPieceBySymbol(BOARD[i]).royal == true && getColor(BOARD[i]) == turn) {
+                        for (var j = 0; j < BOARD.length; j++) {
+                            if (BOARD[j] != EMPTY) {
+                                // Iterate each piece for the opponent, and see if it attacking the royal piece
+                                    if (getColor(BOARD[j]) != turn) {
+                                        if (getPieceBySymbol(BOARD[j]).attacking(boardPosToSan(j),boardPosToSan(i))) return true;
+                                            }}}}}} return false;
     }
 
     // convert a3a4 format to move object

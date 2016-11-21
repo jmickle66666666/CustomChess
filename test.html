@@ -54,14 +54,64 @@ if (chess.fen() != test_fen) {
 
 // chess.moves()
 
+function alphabeticalSort(a,b) {
+    var a1=typeof a, b1=typeof b;
+    return a1<b1 ? -1 : a1>b1 ? 1 : a<b ? -1 : a>b ? 1 : 0;
+}
+function movesAreEqual(a,b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+        if (a[i] != b[i]) return false;
+    }
+    return true;
+}
+
 chess = new Chess();
-chess.load('1n2k1n1/8/8/8/8/2N5/8/1N2K3 w - - 0 1');
-if ('b1c3' in chess.moves()) fail('blocked move is possible');
+ochess = new OChess();
+fen = randomFen();
+chess.load(fen);
+ochess.load(fen);
+var tyl = ochess.moves();
+var myl = chess.moves();
+myl.sort(alphabeticalSort);
+tyl.sort(alphabeticalSort);
+if (movesAreEqual(myl,tyl) != true) {
+    fail("moves are different");
+    console.log(myl);
+    console.log(tyl);
+}
+
+var moves_fails = 0;
+chess = new Chess();
+ochess = new OChess();
+for (var i = 0; i < 1000; i++) {
+    var fen = randomFen();
+    chess.load(fen);
+    ochess.load(fen);
+    var tyl = ochess.moves();
+    var myl = chess.moves();
+    myl.sort(alphabeticalSort);
+    tyl.sort(alphabeticalSort);
+    if (movesAreEqual(myl,tyl) != true) { moves_fails += 1; }
+}
+if (moves_fails > 0) fail('failed '+moves_fails+' fens! wtf');
+
 // chess.turn()
 
 var turn_fails = 0;
 chess = new Chess();
 ochess = new OChess();
+function alphabeticalSort(a,b) {
+    var a1=typeof a, b1=typeof b;
+    return a1<b1 ? -1 : a1>b1 ? 1 : a<b ? -1 : a>b ? 1 : 0;
+}
+function movesAreEqual(a,b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+        if (a[i] != b[i]) return false;
+    }
+    return true;
+}
 for (var i = 0; i < 1000; i++) {
     test_fen = randomFen();
     chess.load(test_fen);

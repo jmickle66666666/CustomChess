@@ -22,12 +22,16 @@ function randomFen() {
 
 // chess.fen()
 
+var fenload_fails = 0;
 chess = new Chess();
 ochess = new OChess();
-fen = randomFen();
-chess.load(fen);
-ochess.load(fen);
-if (chess.fen() != ochess.fen()) fail('failed a fen()!');
+for (var i = 0; i < 1000; i++) {
+    test_fen = randomFen();
+    chess.load(test_fen);
+    ochess.load(test_fen);
+    if (chess.turn() != ochess.turn()) fenload_fails += 1;
+}
+if (fenload_fails > 0) fail('failed '+fenload_fails+' fens! wtf');
 
 // chess.reset()
 
@@ -53,7 +57,6 @@ if (chess.fen() != test_fen) {
 chess = new Chess();
 chess.load('1n2k1n1/8/8/8/8/2N5/8/1N2K3 w - - 0 1');
 if ('b1c3' in chess.moves()) fail('blocked move is possible');
-console.log(ochess.moves());
 // chess.turn()
 
 var turn_fails = 0;

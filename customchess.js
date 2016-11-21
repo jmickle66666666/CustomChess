@@ -7,7 +7,10 @@ var Chess = function(fen) {
 
     // state
     var turn = WHITE;
-    var CASTLE_RIGHTS = '-';
+    var CASTLE_RIGHTS = {
+        "white" : { "qside" : false, "kside" : false },
+        "black" : { "qside" : false, "kside" : false }
+    };
     var EN_PASSANT = '-';
     var HALFMOVE_CLOCK = 0;
     var FULLMOVE_CLOCK = 1;
@@ -16,6 +19,23 @@ var Chess = function(fen) {
     var BOARD_WIDTH = 8;
 
     var PIECES = [];
+
+    function fenCastleRights() {
+        output = "";
+        if (CASTLE_RIGHTS.white.kside) output += "K";
+        if (CASTLE_RIGHTS.white.qside) output += "Q";
+        if (CASTLE_RIGHTS.black.kside) output += "k";
+        if (CASTLE_RIGHTS.black.qside) output += "q";
+        if (output == "") output = "-";
+        return output;
+    }
+
+    function loadFenCastleRights(fenData) {
+        CASTLE_RIGHTS.white.kside = fenData.indexOf("K") > -1;
+        CASTLE_RIGHTS.white.qside = fenData.indexOf("Q") > -1;
+        CASTLE_RIGHTS.black.kside = fenData.indexOf("k") > -1;
+        CASTLE_RIGHTS.black.qside = fenData.indexOf("q") > -1;
+    }
 
     function inCheck() {
         for (var i = 0; i < BOARD.length; i++) {
@@ -456,7 +476,9 @@ var Chess = function(fen) {
     function loadFEN(fen) {
         var fenPosition = 0;
         var boardPosition = 0;
-        var fenDefinition = fen.split(' ')[0];
+        var fenArray = fen.split(' ');
+        var fenDefinition = fenArray[0];
+
 
         for (fenPosition = 0; fenPosition < fenDefinition.length; fenPosition += 1) {
             if (isNaN(fenDefinition.charAt(fenPosition))) {
@@ -470,10 +492,12 @@ var Chess = function(fen) {
                 boardPosition += parseInt(fenDefinition.charAt(fenPosition));
             }
         }
-        turn = fen.split(' ')[1];
-        //CASTLE_RIGHTS = 
-        //HALFMOVE_CLOCK = fen.split(' ')[2];
-        //HALFMOVE_CLOCK = fen.split(' ')[3];
+        turn = fenArray[1];
+
+        loadFenCastleRights(fenArray[2]);
+        EN_PASSANT = fenArray[3];
+        HALFMOVE_CLOCK = parseInt(fenArray[4]);
+        FULLMOVE_CLOCK = parseInt(fenArray[5]);
     }
 
     function saveFEN() {
@@ -497,7 +521,7 @@ var Chess = function(fen) {
         }
         if (spaceCounter > 0) fenPosition += spaceCounter;
         
-        output = [fenPosition,turn,CASTLE_RIGHTS,EN_PASSANT,HALFMOVE_CLOCK,FULLMOVE_CLOCK].join(' ');
+        output = [fenPosition,turn,fenCastleRights(),EN_PASSANT,HALFMOVE_CLOCK.toString(),FULLMOVE_CLOCK.toString()].join(' ');
 
         return output;
     }

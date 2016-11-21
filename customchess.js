@@ -536,18 +536,19 @@ var Chess = function(fen) {
                         outmoves = outmoves.concat(getPieceBySymbol(BOARD[i]).legalMoves(boardPosToSan(i)));
             }
         }
+
         // verify moves avoid check:
-        currentFen = saveFEN();
         for (i = 0; i < outmoves.length; i++) {
-            testMove(outmoves[i]);
+            var cr = testMove(outmoves[i]);
             if (!inCheck()) output.push(outmoves[i]);
-            loadFEN(currentFen);
+            loadFEN(cr);
         }
 
         return output;
     }
 
     function testMove(move) {
+        var currentFen = saveFEN();
         move = sanMoveToObject(move);
         var fromPiece = BOARD[sanToBoardPos(move.from)];
         if (move.promotion != '') {
@@ -557,6 +558,7 @@ var Chess = function(fen) {
             BOARD[sanToBoardPos(move.to)] = fromPiece;  
         }
         BOARD[sanToBoardPos(move.from)] = EMPTY;
+        return currentFen;
     }
 
     function executeMove(move) {
@@ -575,13 +577,10 @@ var Chess = function(fen) {
 
             BOARD[sanToBoardPos(move.from)] = EMPTY;
 
+            if (turn == BLACK) FULLMOVE_CLOCK += 1;
             if (turn == WHITE) turn = BLACK; else turn = WHITE;
 
-            HALFMOVE_CLOCK += 1;
-            if (HALFMOVE_CLOCK == 2) {
-                HALFMOVE_CLOCK = 0;
-                FULLMOVE_CLOCK += 1;
-            }
+            if (!move.capture) HALFMOVE_CLOCK += 1; else HALFMOVE_CLOCK = 0;
         } else return null;
     }
 

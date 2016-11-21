@@ -1,16 +1,19 @@
 var Chess = function(fen) {
     
+    // Constants 
     var BLACK = 'b';
     var WHITE = 'w';
-
     var EMPTY = '-';
+    var DEFAULT_POSITION = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-    // state
+    // Board state
+
     var turn = WHITE;
     var CASTLE_RIGHTS = {
         "white" : { "qside" : false, "kside" : false },
         "black" : { "qside" : false, "kside" : false }
     };
+
     var EN_PASSANT = '-';
     var HALFMOVE_CLOCK = 0;
     var FULLMOVE_CLOCK = 1;
@@ -20,6 +23,7 @@ var Chess = function(fen) {
 
     var PIECES = [];
 
+    // Convert castling writes to fen-compatible string
     function fenCastleRights() {
         output = "";
         if (CASTLE_RIGHTS.white.kside) output += "K";
@@ -30,6 +34,7 @@ var Chess = function(fen) {
         return output;
     }
 
+    // Read castling writes from fen-compatible string
     function loadFenCastleRights(fenData) {
         CASTLE_RIGHTS.white.kside = fenData.indexOf("K") > -1;
         CASTLE_RIGHTS.white.qside = fenData.indexOf("Q") > -1;
@@ -37,12 +42,15 @@ var Chess = function(fen) {
         CASTLE_RIGHTS.black.qside = fenData.indexOf("q") > -1;
     }
 
+    // Checks if the current player is currently in check
     function inCheck() {
         for (var i = 0; i < BOARD.length; i++) {
             if (BOARD[i] != EMPTY) {
+                // Iterate all royal pieces for the current player
                 if (getPieceBySymbol(BOARD[i]).royal == true && getColor(BOARD[i]) == turn) {
                     for (var j = 0; j < BOARD.length; j++) {
                         if (BOARD[j] != EMPTY) {
+                            // Iterate each piece for the opponent, and see if it attacking the royal piece
                             if (getColor(BOARD[j]) != turn) {
                                 if (getPieceBySymbol(BOARD[j]).attacking(boardPosToSan(j),boardPosToSan(i))) return true;
                             }
@@ -54,6 +62,7 @@ var Chess = function(fen) {
         return false;
     }
 
+    // convert a3a4 format to move object
     function sanMoveToObject(sanMove) {
         // I really want to replace all the san/coords bullshit with move objects internally. TODO
         // this is just the beginning.....
@@ -76,6 +85,7 @@ var Chess = function(fen) {
         return output;
     }
 
+    // convert move object to a3a4 format
     function moveObjectToSan(moveObject) {
         var output = '';
         var piece = BOARD[sanToBoardPos(moveObject.from)];
@@ -96,24 +106,31 @@ var Chess = function(fen) {
         return output;
     }
 
+    // is the move currently legal
     function validateMove(moveObject) {
         return legalMoves().indexOf(moveObjectToSan(moveObject)) > -1;
     }
 
+    // get the color of a piece character
+    // eg: getColor('k'); // BLACK
     function getColor(piece) {
         if (piece == EMPTY) return null;
         if (piece == piece.toUpperCase()) return WHITE;
         return BLACK;
     }
 
+    // get the color of a piece, from a san position
+    // eg: getColor('a5');
     function getColorAt(san) {
         return getColor(BOARD[sanToBoardPos(san)]);
     }
 
+    // is the board position empty?
     function isEmpty(san) {
         return BOARD[sanToBoardPos(san)] == EMPTY;
     }
 
+    // get the piece data from a symbol
     function getPieceBySymbol(symbol) {
         for (var i = 0; i < PIECES.length; i++) {
             if (PIECES[i].symbol == symbol.toLowerCase()) return PIECES[i];
@@ -121,29 +138,35 @@ var Chess = function(fen) {
         console.log("can't find "+symbol);
     }
 
+    // convert 'a5' format to { file : 1, rank: 5 }
     function sanToCoords(san) {
         var file = san.charCodeAt(0)-96;
         var rank = parseInt(san.charAt(1));
         return { 'rank':rank, 'file':file };
     }
 
+    // convert { file : 1, rank: 5 } format to 'a5'
     function coordsToSan(file,rank) {
         return String.fromCharCode(file+96) + rank;
     }
 
+    // convert board index to 'a5' format
     function boardPosToSan(position) {
         return coordsToSan(1 + position % 8, 8 - Math.floor(position / 8));
     }
 
+    // convert 'a5' format to board index
     function sanToBoardPos(san) {
         var coords = sanToCoords(san);
         return ((8 - coords.rank) * 8) + (coords.file-1);
     }
 
+    // convert { file : 1, rank: 5 } format to board index
     function coordsToBoardPos(coords) {
         return ((8 - coords.rank) * 8) + (coords.file-1);
     }
 
+    // utility function to build possible moves based on type and position
     function buildMoves(san,moves) {
         var outMoves = [];
         for (var i = 0; i < moves.length; i++) {
@@ -160,6 +183,7 @@ var Chess = function(fen) {
         return outMoves;
     }
 
+    // check if a move is possible
     function checkMove(file,rank,san,move) {
         if (file > 0 && rank > 0 && file <= 8 && rank <= 8) {
             var move = coordsToSan(file,rank);
@@ -178,6 +202,7 @@ var Chess = function(fen) {
         return null;
     }
 
+    // utility to build 'leap' moves
     function buildLeap(san,move) {
         var coords = sanToCoords(san);
         var output = [];
@@ -189,6 +214,7 @@ var Chess = function(fen) {
         return output.reduce(function(a,b){if(a.indexOf(b)<0)a.push(b);return a;},[]);
     }
 
+    // utility to build 'slide' moves
     function buildSlide(san,move) {
         var coords = sanToCoords(san);
         var output = [];
@@ -214,6 +240,7 @@ var Chess = function(fen) {
         return output.reduce(function(a,b){if(a.indexOf(b)<0)a.push(b);return a;},[]);
     }
 
+    // check if a set of moves will result an attack from the 'from' square to the 'to' square
     function attacking(from, to, moves) {
         var coords = sanToCoords(from);
         for (var i = 0; i < moves.length; i++) {
@@ -278,6 +305,7 @@ var Chess = function(fen) {
         return false;
     }
 
+    // create a new piece
     function newPiece(options) {
         var defaultArgs = {
             'moves' : [],
@@ -467,12 +495,11 @@ var Chess = function(fen) {
 
     // other stuff
 
-    var DEFAULT_POSITION = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-
     if (!fen) {
         fen = DEFAULT_POSITION;
     }
 
+    // load a fen string into board state
     function loadFEN(fen) {
         var fenPosition = 0;
         var boardPosition = 0;
@@ -500,6 +527,7 @@ var Chess = function(fen) {
         FULLMOVE_CLOCK = parseInt(fenArray[5]);
     }
 
+    // output the board state as a FEN string
     function saveFEN() {
         var spaceCounter = 0;
         var fenPosition = '';
@@ -526,6 +554,8 @@ var Chess = function(fen) {
         return output;
     }
 
+    // build a list of the current legal moves
+    // currently outputs 'a3a5' format moves
     function legalMoves() {
         var output = [];
         var outmoves = [];
@@ -547,6 +577,7 @@ var Chess = function(fen) {
         return output;
     }
 
+    // move a piece without changing turn or affecting other board state information
     function testMove(move) {
         var currentFen = saveFEN();
         move = sanMoveToObject(move);
@@ -561,6 +592,7 @@ var Chess = function(fen) {
         return currentFen;
     }
 
+    // move a piece on the board
     function executeMove(move) {
 
         if (validateMove(move)) {

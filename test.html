@@ -72,19 +72,20 @@ fen = randomFen();
 chess.load(fen);
 ochess.load(fen);
 var tyl = ochess.moves();
-var myl = chess.moves();
+var myl = chess.simple_moves();
 myl.sort(alphabeticalSort);
 tyl.sort(alphabeticalSort);
 if (movesAreEqual(myl,tyl) != true) {
     fail("moves are different");
     console.log(myl);
     console.log(tyl);
+    console.log(fen);
 }
 
 var moves_fails = 0;
 chess = new Chess();
 ochess = new OChess();
-for (var i = 0; i < 1000; i++) {
+for (var i = 0; i < 100; i++) {
     var fen = randomFen();
     chess.load(fen);
     ochess.load(fen);

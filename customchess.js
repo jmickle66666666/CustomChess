@@ -8,6 +8,7 @@ var Chess = function(fen) {
 
     // Board state
 
+    var lastFen = DEFAULT_POSITION; // for undoing
     var turn = WHITE;
     var CASTLE_RIGHTS = {
         "white" : { "qside" : false, "kside" : false },
@@ -64,7 +65,11 @@ var Chess = function(fen) {
             from : '',
             to : '',
             promotion : '',
-            capture : false
+            capture : false,
+            piece : '',
+            color : '',
+            check : false,
+            checkmate : false
         };
 
         output.from = sanMove.substring(0,2);
@@ -76,6 +81,44 @@ var Chess = function(fen) {
         if (sanMove.indexOf('=') > -1) {
             output.promotion = sanMove.charAt(sanMove.indexOf('=')+1);
         }
+
+        output.piece = BOARD[sanToBoardPos(output.from)];
+        output.color = getColorAt(output.from);
+        if (output.capture == false) {
+            output.capture = !isEmpty(output.to);
+        }
+        executeMove(sanToSimpleMoveObject(sanMove));
+        if (inCheck()) {
+            if (legalMoves().length == 0) {
+                output.checkmate = true;
+            } else {
+                output.check = true;
+            }
+        }
+        undo();
+
+        return output;
+    }
+
+    // convert a3a4 format to move object, without comprehensive data
+    function sanToSimpleMoveObject(sanMove) {
+        var output = {
+            from : '',
+            to : '',
+            promotion : '',
+            capture : false,
+        };
+
+        output.from = sanMove.substring(0,2);
+        if (sanMove.charAt(2) == 'x') {
+            output.capture = true;
+            output.to = sanMove.substring(3,5);
+        }
+        else output.to = sanMove.substring(2,4);
+        if (sanMove.indexOf('=') > -1) {
+            output.promotion = sanMove.charAt(sanMove.indexOf('=')+1);
+        }
+
         return output;
     }
 
@@ -326,6 +369,38 @@ var Chess = function(fen) {
             ['leap',[1,1]],
             ['leap',[0,1]]
         ],
+        legalMoves : function (san) {
+            var output = buildMoves(san,this.moves);
+            // add castling
+            var pos = sanToCoords(san);
+            // black kingside
+            var color = getColorAt(san);
+            if (color == BLACK) {
+            if (CASTLE_RIGHTS.black.kside == true) {
+                if (isEmpty(coordsToSan(pos.file + 1,pos.rank)) && 
+                    isEmpty(coordsToSan(pos.file + 2,pos.rank))) output.push('O-O');
+            }
+            // black queenside
+            if (CASTLE_RIGHTS.black.qside == true) {
+                if (isEmpty(coordsToSan(pos.file - 1,pos.rank)) && 
+                    isEmpty(coordsToSan(pos.file - 2,pos.rank)) &&
+                    isEmpty(coordsToSan(pos.file - 3,pos.rank))) output.push('O-O-O');
+            }
+            } else {
+            // white kingside
+            if (CASTLE_RIGHTS.white.kside == true) {
+                if (isEmpty(coordsToSan(pos.file + 1,pos.rank)) && 
+                    isEmpty(coordsToSan(pos.file + 2,pos.rank))) output.push('O-O');
+            }
+            // white queenside
+            if (CASTLE_RIGHTS.white.qside == true) {
+                if (isEmpty(coordsToSan(pos.file - 1,pos.rank)) && 
+                    isEmpty(coordsToSan(pos.file - 2,pos.rank)) &&
+                    isEmpty(coordsToSan(pos.file - 3,pos.rank))) output.push('O-O-O');
+            }
+            }
+            return output;
+        },
         royal : true,
         symbol : 'k'
     });
@@ -426,7 +501,8 @@ var Chess = function(fen) {
             if (doubleMove) {
                 if (color == 'w') upMove.rank += 1;
                 if (color == 'b') upMove.rank -= 1;
-                if (isEmpty(coordsToSan(upMove.file,upMove.rank))) output.push(san + coordsToSan(upMove.file,upMove.rank));
+                if (isEmpty(coordsToSan(upMove.file,upMove.rank)) &&
+                    isEmpty(coordsToSan(upMove.file,upMove.rank + (color=='w'?-1:1)))) output.push(san + coordsToSan(upMove.file,upMove.rank));
             }
             var _tof,_tor,to_san;
             // attacking
@@ -571,10 +647,39 @@ var Chess = function(fen) {
         return output;
     }
 
+    function simpleMoves() {
+        var moveList = legalMoves();
+        var output = [];
+        for (var i = 0; i < moveList.length; i++) {
+            output.push(simplify(moveList[i]));
+        }
+        return output;
+    }
+
+    function simplify(sanMove) {
+        var output = '';
+        var move = sanMoveToObject(sanMove);
+        if (!move.capture) {
+            if (move.piece.toUpperCase() != 'P') output += move.piece.toUpperCase();
+        } else {
+            if (move.piece.toUpperCase() != 'P') {
+                output += move.piece.toUpperCase();
+            } else {
+                output += move.from.charAt(0);
+            }
+            output += 'x';
+        }
+        output += move.to;
+        if (move.promotion != '') output += '='+output.promotion;
+        if (move.check) output += '+';
+        if (move.checkmate) output += '#';
+        return output;
+    }
+
     // move a piece without changing turn or affecting other board state information
     function testMove(move) {
         var currentFen = saveFEN();
-        move = sanMoveToObject(move);
+        move = sanToSimpleMoveObject(move);
         var fromPiece = BOARD[sanToBoardPos(move.from)];
         if (move.promotion != '') {
             if (turn == WHITE) move.promotion = move.promotion.toUpperCase();
@@ -590,8 +695,10 @@ var Chess = function(fen) {
     function executeMove(move) {
 
         if (validateMove(move)) {
+            lastFen = saveFEN();
+
             // please ignore this
-            move = sanMoveToObject(moveObjectToSan(move));
+            move = sanToSimpleMoveObject(moveObjectToSan(move));
             var fromPiece = BOARD[sanToBoardPos(move.from)];
             
             if (move.promotion != '') {
@@ -610,6 +717,10 @@ var Chess = function(fen) {
         } else return null;
     }
 
+    function undo() {
+        loadFEN(lastFen);
+    }
+
     loadFEN(fen);
 
     // PUBLIC API
@@ -626,11 +737,15 @@ var Chess = function(fen) {
             loadFEN(fen);
         },
 
+        simple_moves : function () {
+            return simpleMoves();
+        },
+
         moves : function () {
             return legalMoves();
         },
 
-        setTurn : function(side) {
+        set_turn : function(side) {
             turn = side;
         },
 
